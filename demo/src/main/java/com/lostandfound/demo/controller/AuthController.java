@@ -108,6 +108,23 @@ public class AuthController {
         userRepository.save(user);
         return ResponseEntity.ok("User created successfully");
     }
+
+    @PostMapping("/signin")
+    public ResponseEntity<?> signin(@RequestBody AuthenticationRequest authRequest) {
+        Optional<User> userOpt = userRepository.findByEmail(authRequest.getEmail().toLowerCase());
+
+        if (!userOpt.isPresent()) {
+            return ResponseEntity.status(404).body("User not found");
+        }
+
+        User user = userOpt.get();
+        if (!bCryptPasswordEncoder.matches(authRequest.getPassword(), user.getPassword())) {
+            return ResponseEntity.badRequest().body("Invalid password");
+        }
+
+        String token = jwtTokenUtil.generateToken(user);
+        return ResponseEntity.ok(new AuthenticationResponse(token, user));
+    }
 }
 
 class AuthenticationRequest {
@@ -134,12 +151,23 @@ class AuthenticationRequest {
 
 class AuthenticationResponse {
     private final String jwt;
+    private final User user;
 
     public AuthenticationResponse(String jwt) {
         this.jwt = jwt;
+        this.user = null;
+    }
+
+    public AuthenticationResponse(String jwt, User user) {
+        this.jwt = jwt;
+        this.user = user;
     }
 
     public String getJwt() {
         return jwt;
+    }
+
+    public User getUser() {
+        return user;
     }
 }

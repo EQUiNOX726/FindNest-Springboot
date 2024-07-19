@@ -46,7 +46,7 @@ public class WebSecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.csrf().disable()
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/users/test", "/api/authenticate", "/api/test/**").permitAll()  // Allow access to test endpoints
+                .requestMatchers("/api/users/test", "/api/authenticate","/api/signin", "/api/test/**").permitAll()  // Allow access to test endpoints
                 .anyRequest().authenticated()
             )
             .exceptionHandling(exception -> exception
