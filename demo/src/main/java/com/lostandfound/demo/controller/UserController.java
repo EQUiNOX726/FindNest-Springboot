@@ -4,6 +4,8 @@ package com.lostandfound.demo.controller;
 import com.lostandfound.demo.model.User;
 import com.lostandfound.demo.repository.UserRepository;
 import com.lostandfound.demo.service.UserService;
+
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -11,8 +13,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Collections;
+
 
 @RestController
 @RequestMapping("/api/users")
@@ -123,10 +129,10 @@ public class UserController {
         return ResponseEntity.ok("User has been deleted");
     }
 
-    @GetMapping("/signout")
+    @PostMapping("/signout")
     public ResponseEntity<?> signout() {
         // Add logic to handle sign out, if necessary
-        return ResponseEntity.ok("User has been signed out");
+        return ResponseEntity.ok(Collections.singletonMap("message", "User has been signed out"));
     }
 
     @GetMapping
