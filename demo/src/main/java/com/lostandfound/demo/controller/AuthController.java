@@ -3,12 +3,10 @@ package com.lostandfound.demo.controller;
 import com.lostandfound.demo.model.User;
 import com.lostandfound.demo.repository.UserRepository;
 import com.lostandfound.demo.util.JwtTokenUtil;
-
-import java.util.Optional;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -16,6 +14,8 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api")
@@ -39,14 +39,14 @@ public class AuthController {
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     @PostMapping("/authenticate")
-    public ResponseEntity<?> createAuthenticationToken(@RequestBody AuthenticationRequest authenticationRequest) throws Exception {
+    public ResponseEntity<?> createAuthenticationToken(@RequestBody AuthenticationRequest authenticationRequest) {
         try {
             authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(authenticationRequest.getEmail(), authenticationRequest.getPassword())
+                    new UsernamePasswordAuthenticationToken(authenticationRequest.getEmail(), authenticationRequest.getPassword())
             );
         } catch (Exception e) {
             logger.error("Authentication failed for email: " + authenticationRequest.getEmail(), e);
-            throw new Exception("Incorrect email or password", e);
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Incorrect email or password");
         }
 
         final UserDetails userDetails = userDetailsService.loadUserByUsername(authenticationRequest.getEmail());
@@ -62,9 +62,9 @@ public class AuthController {
         } else {
             return ResponseEntity.badRequest().body("Invalid token format");
         }
-        
+
         logger.info("Token received: " + token);
-        
+
         String department = user.getDepartment();
         String[] allowedDepartments = {"SSG", "SSO", "SSD"};
         boolean isValidDepartment = false;
@@ -81,7 +81,7 @@ public class AuthController {
         }
 
         if (user.getFirstname() == null || user.getLastname() == null || user.getUsername() == null ||
-            user.getEmail() == null || user.getPassword() == null || user.getDepartment() == null) {
+                user.getEmail() == null || user.getPassword() == null || user.getDepartment() == null) {
             return ResponseEntity.badRequest().body("All fields are required except middlename");
         }
 
@@ -107,6 +107,23 @@ public class AuthController {
 
         userRepository.save(user);
         return ResponseEntity.ok("User created successfully");
+    }
+
+    @PostMapping("/signin")
+    public ResponseEntity<?> signin(@RequestBody AuthenticationRequest authRequest) {
+        Optional<User> userOpt = userRepository.findByEmail(authRequest.getEmail().toLowerCase());
+
+        if (!userOpt.isPresent()) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("User not found");
+        }
+
+        User user = userOpt.get();
+        if (!bCryptPasswordEncoder.matches(authRequest.getPassword(), user.getPassword())) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid password");
+        }
+
+        String token = jwtTokenUtil.generateToken(user);
+        return ResponseEntity.ok(new AuthenticationResponse(token, user));
     }
 }
 
@@ -134,12 +151,23 @@ class AuthenticationRequest {
 
 class AuthenticationResponse {
     private final String jwt;
+    private final User user;
 
     public AuthenticationResponse(String jwt) {
         this.jwt = jwt;
+        this.user = null;
+    }
+
+    public AuthenticationResponse(String jwt, User user) {
+        this.jwt = jwt;
+        this.user = user;
     }
 
     public String getJwt() {
         return jwt;
+    }
+
+    public User getUser() {
+        return user;
     }
 }
